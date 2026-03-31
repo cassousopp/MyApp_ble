@@ -9,7 +9,7 @@ object RssiToDistance {
 
     /**
      * Estime la distance en mètres.
-     * 
+     *
      * Formule : distance = 10 ^ ((txPower - rssi) / (10 * n))
      * @param rssi Puissance du signal reçu.
      * @param txPower Puissance à 1 mètre (par défaut -59 dBm).

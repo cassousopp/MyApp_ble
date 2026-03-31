@@ -9,7 +9,7 @@ object Trilateration {
 
     /**
      * Calcule la position estimée à partir d'une liste de balises et leurs distances.
-     * 
+     *
      * @param validAnchors Liste des balises ayant un signal suffisant (> -85 dBm).
      * @param distances Liste des distances correspondantes.
      * @return Point2D estimé.

@@ -32,7 +32,8 @@ class BleRepository(private val context: Context) {
     private var gatt: BluetoothGatt? = null
 
     // SharedFlow pour diffuser les résultats du scan à plusieurs ViewModels
-    private val _scanResults = MutableSharedFlow<BleDevice>(extraBufferCapacity = 64)
+    // Ajoutez replay = 1 pour que le dernier appareil détecté soit immédiatement envoyé aux nouveaux abonnés
+    private val _scanResults = MutableSharedFlow<BleDevice>(replay = 1, extraBufferCapacity = 64)
     val scanResults: SharedFlow<BleDevice> = _scanResults.asSharedFlow()
 
     // UUIDs STM32
@@ -55,8 +56,9 @@ class BleRepository(private val context: Context) {
 
         scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
+                val deviceName = result.device.name ?: result.scanRecord?.deviceName ?: "Inconnu"
                 val device = BleDevice(
-                    name = result.device.name,
+                    name = deviceName,
                     address = result.device.address,
                     rssi = result.rssi
                 )

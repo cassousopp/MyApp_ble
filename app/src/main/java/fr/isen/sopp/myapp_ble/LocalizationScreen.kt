@@ -33,7 +33,8 @@ fun LocalizationScreen(
 ) {
     val position by viewModel.position.collectAsStateWithLifecycle()
     val anchors by viewModel.anchorsState.collectAsStateWithLifecycle()
-    
+    val pathPoints by viewModel.pathHistory.collectAsStateWithLifecycle()
+
     // Animation pour l'effet de pulsation du GPS
     val infiniteTransition = rememberInfiniteTransition(label = "gps_pulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -119,6 +120,22 @@ fun LocalizationScreen(
                         }
                     }
 
+                    // Dessiner le tracé historique
+                    if (pathPoints.size > 1) {
+                        val strokePath = androidx.compose.ui.graphics.Path().apply {
+                            val first = pathPoints.first()
+                            moveTo(first.x.toFloat() * scale + margin, first.y.toFloat() * scale + margin)
+                            pathPoints.forEach { p ->
+                                lineTo(p.x.toFloat() * scale + margin, p.y.toFloat() * scale + margin)
+                            }
+                        }
+                        drawPath(
+                            path = strokePath,
+                            color = Color(0xFF2196F3).copy(alpha = 0.3f), // Bleu transparent pour le tracé
+                            style = Stroke(width = 6f)
+                        )
+                    }
+
                     // 4. POSITION GPS (ZONE DE PERCEPTION)
                     position?.let { pos ->
                         val userX = pos.x.toFloat() * scale + margin
@@ -134,7 +151,7 @@ fun LocalizationScreen(
                             radius = animatedRadius,
                             center = Offset(userX, userY)
                         )
-                        
+
                         drawCircle(
                             color = Color(0xFF2196F3).copy(alpha = 0.4f),
                             radius = animatedRadius,

@@ -28,6 +28,10 @@ class LocalizationViewModel(private val repo: BleRepository) : ViewModel() {
     private val _position = MutableStateFlow<Point2D?>(null)
     val position: StateFlow<Point2D?> = _position.asStateFlow()
 
+    // Liste pour stocker le tracé du chemin (Historique)
+    private val _pathHistory = MutableStateFlow<List<Point2D>>(emptyList())
+    val pathHistory: StateFlow<List<Point2D>> = _pathHistory.asStateFlow()
+
     private val _isScanning = MutableStateFlow(true)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
@@ -36,7 +40,7 @@ class LocalizationViewModel(private val repo: BleRepository) : ViewModel() {
 
     // Fenêtre de lissage RSSI très courte pour le temps réel
     private val rssiWindows = mutableMapOf<String, MutableList<Int>>()
-    private val windowSize = 5 
+    private val windowSize = 5
 
     init {
         // Collecte des résultats de scan depuis le SharedFlow pour ne pas bloquer le scan principal
@@ -54,7 +58,6 @@ class LocalizationViewModel(private val repo: BleRepository) : ViewModel() {
     fun toggleScan() {
         if (_isScanning.value) {
             _isScanning.value = false
-            // On n'arrête pas forcément le scan du repo ici car BleViewModel peut en avoir besoin
         } else {
             _isScanning.value = true
             repo.startScan()
@@ -73,8 +76,8 @@ class LocalizationViewModel(private val repo: BleRepository) : ViewModel() {
 
         // Mise à jour réactive de l'UI
         _anchorsState.update { currentList ->
-            currentList.map { 
-                if (it.address == device.address) it.copy(currentRssi = newAvg) else it 
+            currentList.map {
+                if (it.address == device.address) it.copy(currentRssi = newAvg) else it
             }
         }
 
@@ -85,26 +88,30 @@ class LocalizationViewModel(private val repo: BleRepository) : ViewModel() {
         val currentAnchors = _anchorsState.value
         // Seuil strict : exclusion si < -80 dBm
         val validAnchors = currentAnchors.filter { it.currentRssi > -80.0 }
-        
+
         if (validAnchors.size < 3) return
 
-        val distances = validAnchors.map { 
-            RssiToDistance.estimate(it.currentRssi.toInt(), it.txPower) 
+        val distances = validAnchors.map {
+            RssiToDistance.estimate(it.currentRssi.toInt(), it.txPower)
         }
 
         val rawPosition = Trilateration.calculate(validAnchors, distances)
         val smoothed = kalmanFilter.filter(rawPosition.x, rawPosition.y)
 
-        _position.value = Point2D(
+        val newPos = Point2D(
             smoothed.x.coerceIn(-0.5, 10.0),
             smoothed.y.coerceIn(-0.5, 9.5)
         )
+        _position.value = newPos
+
+        // On garde les 20 derniers points pour dessiner une "traînée."
+        _pathHistory.update { list ->
+            (list + newPos).takeLast(20)
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
-        // On laisse le repo gérer l'arrêt global si nécessaire, 
-        // ou on peut appeler repo.stopScan() si on est sûr que personne d'autre n'en a besoin.
     }
 }
 
